@@ -163,8 +163,7 @@ Briefly describe the resulting tidy dataset. How many total observations exist? 
 
 The resulting tidy dataset, joined_zipcode_df, is the zillow data (zori_df) left joined onto the zipcode data (zips_df) with all the redundant columns (which all had the same value for every row, like state, city, metro and so on) removed. Since there were some repeated zip codes for two different counties, I left joined keeping in mind both zip code and county instead of zip code alone. Some of the variables in this data set include the zip code, the neighborhood,  the county code, and the zori data for each case. Total number of observations are `r nrow(joined_zipcode_data)`. Number of unique ZIP codes are `r joined_zipcode_data |> distinct(zip_code) |> nrow()`. Number of unique neighborhoods are `r joined_zipcode_data |> distinct(neighborhood) |> nrow()`. 
 
-Which ZIP codes appear in the ZIP code dataset but not in the Zillow Rental Price dataset? Using a few illustrative examples discuss why these ZIP codes might be excluded from the Zillow dataset. 
-
+Which ZIP codes appear in the ZIP code dataset but not in the Zillow Rental Price dataset? 
 ```{r}
 missing_zips = zips_df |>
   anti_join(zori_df, by = "zip_code") |>
@@ -172,6 +171,8 @@ missing_zips = zips_df |>
 ```
 
 Missing zips are : `r toString(missing_zips["zip_code"], collapse = ",")`
+
+Using a few illustrative examples discuss why these ZIP codes might be excluded from the Zillow dataset. 
 
 - 10278 - Government building, Jacob K Javits building has its own zip code, so no residential properties there for zillow. 
 - 10118 Empire state building has its own zip code. 

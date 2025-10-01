@@ -5,27 +5,34 @@ date: "2025-09-25"
 author: "Kaveri Uberoy"
 ---
 
+Loading in packages we need. 
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(dplyr)
+library(knitr)
+```
+
 ## Problem 1 
 
 Our goal is to merge these into a single data frame using year and month as keys across datasets.
 
-First, clean the data in pols-month.csv. Use separate() to break up the variable mon into integer variables year, month, and day; replace month number with month name; create a president variable taking values gop and dem, and remove prez_dem and prez_gop; and remove the day variable.
+Cleaning the data in pols-month.csv. Used prez_dem value to create president variable instead of prez_gop value as prez_gop value is sometimes 1 and sometimes 2. 
 
 ```{r}
-library(tidyverse)
-
 pols_df = 
   read_csv("data/pols-month.csv") |>
   janitor::clean_names() |>
   separate(mon, into = c("year", "month", "day"), sep = "-") |>
   mutate(across(c(year, month, day), as.integer)) |>
   mutate(month = month.name[month]) |>
-  mutate(president = if_else(prez_gop == 1, "gop", "dem")) |>
+  mutate(president = if_else(prez_dem == 1, "dem" , "gop")) |>
   select(-prez_gop, -prez_dem) |>
   select(-day)
 ```
 
-Second, clean the data in snp.csv using a similar process to the above. For consistency across datasets, arrange according to year and month, and organize so that year and month are the leading columns.
+Clean the data in snp.csv using a similar process to the above. Also removed the day variable here to match pols_df tidying, made changes to year value to also match pols_df. 
 
 ```{r}
 snp_df = 
@@ -39,12 +46,12 @@ snp_df =
   relocate(year, month)
 ```
 
-Third, tidy the unemployment data so that it can be merged with the previous datasets. This process will involve switching from “wide” to “long” format; ensuring that key variables have the same name; and ensuring that key variables take the same values.
+Tidying the unemployment data so that it can be merged with the previous datasets by month and year. 
 
 ```{r}
 
 unemployment_df =
-  read_csv("data/unemployment.csv")|>
+  read_csv("data/unemployment.csv") |>
   janitor::clean_names() |>
   pivot_longer(
     cols = -year,
@@ -59,10 +66,10 @@ unemployment_df =
 
 ```
 
-Join the datasets by merging snp into pols, and merging unemployment into the result.
+Join the datasets by left joining snp into pols, and left joining unemployment into the result.
 
 ```{r}
-merged_df =
+pol_eco_fin_merged_df =
   pols_df |>
   left_join(snp_df, by = c("year", "month")) |>
   left_join(unemployment_df, by = c("year", "month"))
@@ -70,7 +77,134 @@ merged_df =
 
 Write a short paragraph about these datasets. Explain briefly what each dataset contained, and describe the resulting dataset (e.g. give the dimension, range of years, and names of key variables).
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+The dataset construction involved merging three different csv files containing political, economic, and financial data into one tidy dataset, The pols_-month_df dataset includes monthly counts of Democratic and Republican governors, senators, and representatives, along with the party of the president. The mon date variable was split into year and month, and a new president variable was created using the value of the prez_dem (if equal to 1, president column = dem, if equal to zero then gop). The snp_df dataset provides the Standard & Poor’s stock market index (S&P) closing values for specific dates. The date column was transformed into year and month so that we could merge with the other datasets later. The unemployment_df dataset, which contains unemployment rates for each date (month/year) originally in a wide format with months as column headers, was pivoted to a long format for compatibility. Month abbreviations were converted to full names to align with the other datasets for merging as well. The resulting dataset, pol_eco_fin_merged_df (left joined by date values) combines all three sources and includes 822 observations with 11 variables like year, month, president, counts of politicians by party, close (S&P 500 index), and unemployment. It spans a range of years (January 1947 to June 2015) from the earliest in pols_df to the latest in snp_df (depending on overlap). Key variables include president, sen_gop, rep_dem, close, and unemployment. The dataset is useful to look at politics, economics, and unemployment data together to compare these different factors. 
+
+## Problem 2
+
+Reading and cleaning the Mr. Trash Wheel sheet:
+
+```{r}
+trashwheel_df =
+  read_excel("data/trash_wheel_collection_data.xlsx", 
+             sheet = "Mr. Trash Wheel",
+             range = "A2:N709") |>
+  janitor::clean_names() |>
+  mutate(
+      sports_balls = as.integer(round(sports_balls)),
+      year = as.numeric(year)
+    )
 ```
 
+Importing, cleaning, and organizing the data for Professor Trash Wheel and Gwynnda, and combining this with the Mr. Trash Wheel dataset to produce a single tidy dataset.
+
+```{r}
+professor_trashwheel_df =
+  read_excel("data/trash_wheel_collection_data.xlsx", 
+             sheet = "Professor Trash Wheel",
+             range = "A2:M134") |>
+  janitor::clean_names()
+
+gwynnda_trashwheel_df =
+  read_excel("data/trash_wheel_collection_data.xlsx", 
+             sheet = "Gwynns Falls Trash Wheel",
+             range = "A2:L351") |>
+  janitor::clean_names()
+
+trashwheels_combined_df = 
+  bind_rows(
+    trashwheel_df |>
+      mutate(
+        trash_wheel = "Mr. Trash Wheel"
+      ),
+    professor_trashwheel_df |>
+      mutate(
+        trash_wheel = "Professor Trash Wheel"
+      ),
+    gwynnda_trashwheel_df |>
+      mutate(
+        trash_wheel = "Gwynnda"
+      )
+  )
+
+```
+
+Write a paragraph about these data; you are encouraged to use inline R. Be sure to note the number of observations in the resulting dataset, and give examples of key variables. For available data, what was the total weight of trash collected by Professor Trash Wheel? What was the total number of cigarette butts collected by Gwynnda in June of 2022?
+
+Each of the trash_wheel datasets contain information on the amounts of trash that each trashwheel collected,in weight and volume, when it was collected, which dumpster it was collected from, and information on the amounts of specific types of trash it collected (like plastic bottles, wrappers, sports balls, etc). Each data set also notes how many homes were powered by the trashwheel that month.  The combined dataset, trashwheels_combined_df contains `r nrow(trashwheels_combined_df)` observations collected from three distinct trash wheels: Mr. Trash Wheel, Professor Trash Wheel, and Gwynnda. Key variables in the combined dataset include the trashwheel responsible for each row, the weight of trash collected (in tons), counts of specific items such as cigarette butts, sports balls, and plastics, as well as time variables like month and year. Professor Trash Wheel collected a total of `r sum(professor_trashwheel_df[["weight_tons"]])` tons of trash. Meanwhile, Gwynnda collected `r gwynnda_trashwheel_df |> filter(month == "June", year == 2022) |> summarise(total = sum(cigarette_butts, na.rm= TRUE)) |> pull(total)` cigarette butts in June 2022 alone.
+
+## Problem 3 
+
+Create a single, well-organized dataset with all the information from zips and zori datasets, and combine them.
+
+```{r}
+
+zips_df = 
+  read_csv("data/Zip Codes.csv", na = c("NA", ".", "")) |>
+  janitor::clean_names() 
+
+zori_df = 
+  read_csv("data/Zip_zori_uc_sfrcondomfr_sm_month_NYC.csv", na = c("NA", ".", "")) |>
+  janitor::clean_names() |>
+  pivot_longer(cols = x2015_01_31:x2024_08_31,
+               names_to = "date",
+               values_to = "zori") |>
+  mutate(region_name = as.numeric(region_name)) |>
+  mutate(county_name = str_remove(county_name," County")) |>
+  rename(county = county_name) |>
+  rename(zip_code = region_name)
+
+joined_zipcode_data =  
+  left_join(zips_df, zori_df, by = c("zip_code", "county")) |>
+  select(-state, -city, -metro, -region_type, -state_name, -state_fips, -file_date)
+
+```
+
+Briefly describe the resulting tidy dataset. How many total observations exist? How many unique ZIP codes are included, and how many unique neighborhoods?
+
+Total number of observations are `r nrow(joined_zipcode_data)`. Number of unique ZIP codes are `r joined_zipcode_data |> distinct(zip_code) |> nrow()`. Number of unique neighborhoods are `r joined_zipcode_data |> distinct(neighborhood) |> nrow()`. 
+
+Which ZIP codes appear in the ZIP code dataset but not in the Zillow Rental Price dataset? Using a few illustrative examples discuss why these ZIP codes might be excluded from the Zillow dataset. 
+
+Missing zips: 
+
+```{r}
+missing_zips = zips_df |>
+  anti_join(zori_df, by = "zip_code") |>
+  select(-state_fips, -file_date)
+kable(missing_zips)
+```
+
+
+- 10278 - Government building, Jacob K Javits building has its own zip code, so no residential properties there for zillow. 
+- 10118 Empire state building has its own zip code. 
+- 10111: Rockefeller Center has it's own zip code. 
+
+Some business/ government buildings or financial areas have their own zip codes in New York, so there cannot be residential properties there and therefore they wouldn't show up on Zillow. 
+
+
+Make a table that shows the 10 ZIP codes (along with the borough and neighborhood) with largest drop in price from January 2020 to 2021. Comment.
+
+```{r}
+
+january_data <- joined_zipcode_data |>
+  filter(date == "x2020_01_31" | date == "x2021_01_31") |>
+  select(county, zip_code, neighborhood, date, zori) |>
+  pivot_wider(names_from = date, values_from = zori, 
+              names_prefix = "zori_") |>
+  filter(!is.na(zori_x2020_01_31) & !is.na(zori_x2021_01_31)) |>
+  mutate(price_change = zori_x2021_01_31 - zori_x2020_01_31) |>
+  arrange(price_change)
+
+top_ten_changes <- january_data |>
+  slice(1:10) |>
+  rename(
+    zori_2020 = zori_x2020_01_31,
+    zori_2021 = zori_x2021_01_31
+  ) |>
+  select(zip_code, county, neighborhood, zori_2020, zori_2021, price_change)
+
+kable(top_ten_changes)
+
+```
+
+Most of these are very expensive areas, but also very dense areas with very little green space nearby. COVID-19 was probably the worst in these neighborhoods (the most cases), a lot of people probably didn't want to live in a super dense neighborhood with a lot of cases and risk getting sick, and without an outdoor space to be able to get fresh air, the rent prices probably seemed very difficult to justify, so the landlords probably had to shift their prices much lower to adjust for that to try to convince people to rent in those areas despite covid.  

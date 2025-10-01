@@ -165,15 +165,13 @@ The resulting tidy dataset, joined_zipcode_df, is the zillow data (zori_df) left
 
 Which ZIP codes appear in the ZIP code dataset but not in the Zillow Rental Price dataset? Using a few illustrative examples discuss why these ZIP codes might be excluded from the Zillow dataset. 
 
-Missing zips: 
-
 ```{r}
 missing_zips = zips_df |>
   anti_join(zori_df, by = "zip_code") |>
-  select(-state_fips, -file_date)
-kable(missing_zips)
+  select(zip_code)
 ```
 
+Missing zips are : `r toString(missing_zips["zip_code"], collapse = ",")`
 
 - 10278 - Government building, Jacob K Javits building has its own zip code, so no residential properties there for zillow. 
 - 10118 Empire state building has its own zip code. 
